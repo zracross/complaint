@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Zracross Complaint Portal</title>
+<script src="https://www.google.com/recaptcha/api.js?render=YOUR_SITE_KEY"></script>
+<style>
+body{font-family:Arial,sans-serif;background:linear-gradient(135deg,#0b1f4d,#1a73e8);margin:0;color:#222}.wrap{max-width:900px;margin:30px auto;padding:20px}.card{background:#fff;border-radius:18px;padding:24px;box-shadow:0 10px 30px rgba(0,0,0,.2)}h1,h2{text-align:center}.hidden{display:none}input,select,textarea,button{width:100%;padding:12px;margin:8px 0;border:1px solid #ccc;border-radius:10px;box-sizing:border-box}button{background:#1a73e8;color:#fff;border:none;font-weight:700;cursor:pointer}.secondary{background:#eef3ff;color:#1a73e8}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.ain{font-size:32px;font-weight:800;text-align:center;color:#1a73e8;padding:20px;background:#f4f8ff;border-radius:14px}.small{text-align:center;color:#666} @media(max-width:700px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class='wrap'>
+<div class='card'>
+<div id='loginPage'>
+<h1>Zracross Complaint Portal</h1>
+<input id='email' type='email' placeholder='Email address'>
+<button onclick='sendOTP()'>Send OTP</button>
+<input id='otp' placeholder='Enter OTP'>
+<button onclick='verifyOTP()'>Login</button>
+<button class='secondary' onclick='showPage("statusPage")'>Status Check</button>
+</div>
+<div id='complaintPage' class='hidden'>
+<h2>Complaint Registration</h2>
+<input id='loggedEmail' readonly>
+<input id='pin' placeholder='Enter PIN'>
+<button onclick='fetchDetails()'>Fetch Details</button>
+<div class='grid'>
+<input id='name' readonly placeholder='Name'>
+<input id='account' readonly placeholder='Account Number'>
+<input id='ifsc' readonly placeholder='IFSC'>
+<input id='phone' placeholder='Phone Number'>
+</div>
+<select id='subject' onchange='loadSubs()'>
+<option value=''>Select Subject</option>
+<option>Account Issues</option><option>Transaction Issues</option><option>Staff Behaviour</option><option>Loan Issues</option><option>KYC Issues</option><option>Fraud Complaint</option>
+</select>
+<select id='subsubject'><option value=''>Select Sub Subject</option></select>
+<textarea id='message' rows='5' placeholder='Write your complaint'></textarea>
+<button onclick='submitComplaint()'>Submit Complaint</button>
+</div>
+<div id='successPage' class='hidden'>
+<h2>Complaint Registered Successfully</h2>
+<div id='ainBox' class='ain'></div>
+<p class='small'>Please save your AIN for tracking.</p>
+<button onclick='resetPortal()'>Submit Another Complaint</button>
+<button class='secondary' onclick='showPage("statusPage")'>Check Status</button>
+</div>
+<div id='statusPage' class='hidden'>
+<h2>Complaint Status Check</h2>
+<input id='statusAin' placeholder='AIN-XXXXXXXX'>
+<input id='statusPin' placeholder='PIN'>
+<button onclick='checkStatus()'>Check Status</button>
+<div id='statusResult'></div>
+<button class='secondary' onclick='showPage("loginPage")'>Back</button>
+</div>
+</div></div>
+<script>
+const OLD_API='https://script.google.com/macros/s/AKfycbzTfkw41vJ7OUUlTyN7MLg-aZB8ULTyKmNtMcrvyqzraArFLbjXX79YHvYtSF9zOML2Ag/exec';
+const NEW_API='https://script.google.com/macros/s/AKfycbzfCkQNZHHS-kBqCy44llz0EjJRDZZ0cIA_yNJsDBERv1fgce7htX_4psDXydtEKlcm/exec';
+let token=''; let users=[];
+const subs={"Account Issues":["Account Access","PIN Problem"],"Transaction Issues":["UPI Failed","Debit Not Credited","ATM Issue"],"Staff Behaviour":["Rude Behaviour","Refused Service"],"Loan Issues":["Loan Query","EMI Issue"],"KYC Issues":["KYC Pending","Document Update"],"Fraud Complaint":["Unauthorized Transaction","Suspicious Activity"]};
+function showPage(id){['loginPage','complaintPage','successPage','statusPage'].forEach(x=>document.getElementById(x).classList.add('hidden'));document.getElementById(id).classList.remove('hidden');}
+function loadSubs(){const s=document.getElementById('subject').value;const ss=document.getElementById('subsubject');ss.innerHTML='<option value="">Select Sub Subject</option>'; (subs[s]||[]).forEach(v=>ss.innerHTML+=`<option>${v}</option>`)}
+async function sendOTP(){const email=document.getElementById('email').value.trim(); const res=await fetch(OLD_API,{method:'POST',body:JSON.stringify({action:'sendOTP',email,captcha:'dummy'})}); alert(await res.text());}
+async function verifyOTP(){const email=document.getElementById('email').value.trim(); const otp=document.getElementById('otp').value.trim(); const res=await fetch(OLD_API,{method:'POST',body:JSON.stringify({action:'verifyOTP',email,otp})}); const t=await res.text(); if(t.includes('INVALID')) return alert(t); token=t; document.getElementById('loggedEmail').value=email; showPage('complaintPage');}
+async function fetchDetails(){if(!users.length){users=await (await fetch(OLD_API)).json();} const email=document.getElementById('loggedEmail').value.toLowerCase(); const pin=document.getElementById('pin').value.trim(); const u=users.find(x=>String(x.email).toLowerCase()===email && String(x.pin)===pin); if(!u) return alert('Invalid PIN'); document.getElementById('name').value=u.name; document.getElementById('account').value=u.account_no; document.getElementById('ifsc').value=u.ifsc;}
+async function submitComplaint(){const payload={action:'submitComplaint',name:name.value,account:account.value,ifsc:ifsc.value,email:loggedEmail.value,subject:subject.value,subsubject:subsubject.value,message:message.value}; const res=await fetch(NEW_API,{method:'POST',body:JSON.stringify(payload)}); const data=await res.json(); if(!data.success) return alert(data.message); ainBox.textContent=data.ain; showPage('successPage');}
+async function checkStatus(){const res=await fetch(NEW_API,{method:'POST',body:JSON.stringify({action:'checkStatus',ain:statusAin.value})}); const d=await res.json(); if(!d.success) return statusResult.innerHTML='<p>Not found</p>'; statusResult.innerHTML=`<div class='card'><p><b>Status:</b> ${d.status}</p><p><b>Subject:</b> ${d.subject}</p><p><b>Message:</b> ${d.message}</p><p><b>Date:</b> ${d.date}</p></div>`;}
+function resetPortal(){location.reload();}
+</script>
+</body>
+</html>
