@@ -4,31 +4,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Zracross Complaint Portal</title>
-
 <style>
 body{
 margin:0;
 font-family:Arial,sans-serif;
 background:linear-gradient(135deg,#0b1f4d,#1a73e8);
-}
-.wrap{
-max-width:900px;
-margin:30px auto;
 padding:20px;
 }
 .card{
+max-width:1100px;
+margin:auto;
 background:#fff;
 border-radius:20px;
 padding:25px;
-box-shadow:0 12px 35px rgba(0,0,0,.2);
+box-shadow:0 15px 40px rgba(0,0,0,.2);
 }
-h1,h2{
-text-align:center;
-color:#0b1f4d;
-}
+h1,h2,h3{color:#0b1f4d;text-align:center;}
 input,select,textarea,button{
 width:100%;
-padding:13px;
+padding:12px;
 margin:8px 0;
 border-radius:10px;
 border:1px solid #ccc;
@@ -38,64 +32,59 @@ font-size:15px;
 button{
 background:#1a73e8;
 color:#fff;
-font-weight:700;
+font-weight:bold;
 border:none;
 cursor:pointer;
-}
-button:hover{
-opacity:.95;
 }
 .secondary{
 background:#eef3ff;
 color:#1a73e8;
 }
-.hidden{
-display:none;
-}
+.hidden{display:none;}
 .grid{
 display:grid;
 grid-template-columns:1fr 1fr;
 gap:12px;
 }
-.ain{
-font-size:34px;
-font-weight:800;
-text-align:center;
-padding:20px;
-background:#f4f8ff;
-border-radius:15px;
-color:#1a73e8;
+.tabs button{
+width:auto;
+padding:10px 16px;
+margin-right:8px;
 }
-.status-card{
+.list-item{
+padding:12px;
+border:1px solid #ddd;
+border-radius:10px;
+margin:8px 0;
+cursor:pointer;
+}
+.detail-box{
 background:#f7faff;
-padding:18px;
+padding:15px;
 border-radius:12px;
 margin-top:15px;
 }
 @media(max-width:700px){
-.grid{
-grid-template-columns:1fr;
-}
+.grid{grid-template-columns:1fr;}
 }
 </style>
 </head>
 <body>
 
-<div class="wrap">
 <div class="card">
 
 <div id="loginPage">
 <h1>Zracross Complaint Portal</h1>
 
-<input id="email" type="email" placeholder="Email address">
+<input id="email" type="email" placeholder="Email Address">
 <button onclick="sendOTP()">Send OTP</button>
 
 <input id="otp" placeholder="Enter OTP">
 <button onclick="verifyOTP()">Login</button>
 
-<button class="secondary" onclick="showPage('statusPage')">Status Check</button>
+<button class="secondary" onclick="showPage('statusPage')">Check Status</button>
+<button class="secondary" onclick="showPage('officialLogin')">Official Login</button>
 </div>
-
 
 <div id="complaintPage" class="hidden">
 <h2>Complaint Registration</h2>
@@ -111,7 +100,7 @@ grid-template-columns:1fr;
 <input id="phone" placeholder="Phone Number">
 </div>
 
-<select id="subject" onchange="loadSubs()">
+<select id="subject">
 <option value="">Select Subject</option>
 <option>Account Issues</option>
 <option>Transaction Issues</option>
@@ -121,77 +110,71 @@ grid-template-columns:1fr;
 <option>Fraud Complaint</option>
 </select>
 
-<select id="subsubject">
-<option value="">Select Sub Subject</option>
-</select>
+<input id="subsubject" placeholder="Sub Subject">
 
-<textarea id="message" rows="6" placeholder="Write your complaint"></textarea>
+<textarea id="message" rows="6" placeholder="Write Complaint"></textarea>
 
 <button onclick="submitComplaint()">Submit Complaint</button>
 </div>
 
-
-<div id="successPage" class="hidden">
-<h2>Complaint Registered Successfully</h2>
-<div id="ainBox" class="ain"></div>
-<p style="text-align:center;">Please save your AIN.</p>
-
-<button onclick="resetPortal()">Submit Another Complaint</button>
-<button class="secondary" onclick="showPage('statusPage')">Check Status</button>
-</div>
-
-
 <div id="statusPage" class="hidden">
-<h2>Status Check</h2>
-
-<input id="statusAin" placeholder="AIN-XXXXXXXX">
+<h2>Complaint Status Check</h2>
+<input id="statusAin" placeholder="Enter AIN">
 <button onclick="checkStatus()">Check Status</button>
-
 <div id="statusResult"></div>
-
 <button class="secondary" onclick="showPage('loginPage')">Back</button>
 </div>
 
+<div id="officialLogin" class="hidden">
+<h2>Official Login</h2>
+<input id="offIfsc" placeholder="Official IFSC">
+<input id="offPass" type="password" placeholder="Password">
+<button onclick="officialLogin()">Login</button>
+<button class="secondary" onclick="showPage('loginPage')">Back</button>
 </div>
+
+<div id="officialDashboard" class="hidden">
+<h2>Official Dashboard</h2>
+
+<div class="tabs">
+<button onclick="loadComplaints('all')">All</button>
+<button onclick="loadComplaints('Pending')">Pending</button>
+<button onclick="loadComplaints('Solved')">Solved</button>
+</div>
+
+<div id="complaintList"></div>
+<div id="detailBox"></div>
+
+<button class="secondary" onclick="logoutOfficial()">Logout</button>
+</div>
+
 </div>
 
 <script>
-const OLD_API="https://script.google.com/macros/s/AKfycbzTfkw41vJ7OUUlTyN7MLg-aZB8ULTyKmNtMcrvyqzraArFLbjXX79YHvYtSF9zOML2Ag/exec";
-const NEW_API="https://script.google.com/macros/s/AKfycbzfCkQNZHHS-kBqCy44llz0EjJRDZZ0cIA_yNJsDBERv1fgce7htX_4psDXydtEKlcm/exec";
+const OTP_API = "https://script.google.com/macros/s/AKfycbzTfkw41vJ7OUUlTyN7MLg-aZB8ULTyKmNtMcrvyqzraArFLbjXX79YHvYtSF9zOML2Ag/exec";
+const COMPLAINT_API = "https://script.google.com/macros/s/AKfycbwbJYWdo-_mvn1Wxmy3ku2bbs24yVj1HMZDL6ABKZswDtcwgr9B14pPKamuIU8hIrP_/exec";
 
-let users=[];
-
-const subs={
-"Account Issues":["Account Access","PIN Problem"],
-"Transaction Issues":["UPI Failed","Debit Not Credited","ATM Issue"],
-"Staff Behaviour":["Rude Behaviour","Refused Service"],
-"Loan Issues":["Loan Query","EMI Issue"],
-"KYC Issues":["KYC Pending","Document Update"],
-"Fraud Complaint":["Unauthorized Transaction","Suspicious Activity"]
-};
+let users = [];
+let complaintCache = [];
+let filteredComplaints = [];
 
 function showPage(id){
-["loginPage","complaintPage","successPage","statusPage"].forEach(p=>{
+[
+"loginPage",
+"complaintPage",
+"statusPage",
+"officialLogin",
+"officialDashboard"
+].forEach(p=>{
 document.getElementById(p).classList.add("hidden");
 });
 document.getElementById(id).classList.remove("hidden");
 }
 
-function loadSubs(){
-const s=document.getElementById("subject").value;
-const ss=document.getElementById("subsubject");
-
-ss.innerHTML='<option value="">Select Sub Subject</option>';
-
-(subs[s]||[]).forEach(v=>{
-ss.innerHTML+=`<option>${v}</option>`;
-});
-}
-
 async function sendOTP(){
-const email=document.getElementById("email").value.trim();
+const email = document.getElementById("email").value.trim();
 
-const res=await fetch(OLD_API,{
+const res = await fetch(OTP_API,{
 method:"POST",
 body:JSON.stringify({
 action:"sendOTP",
@@ -203,10 +186,10 @@ alert(await res.text());
 }
 
 async function verifyOTP(){
-const email=document.getElementById("email").value.trim();
-const otp=document.getElementById("otp").value.trim();
+const email = document.getElementById("email").value.trim();
+const otp = document.getElementById("otp").value.trim();
 
-const res=await fetch(OLD_API,{
+const res = await fetch(OTP_API,{
 method:"POST",
 body:JSON.stringify({
 action:"verifyOTP",
@@ -215,72 +198,73 @@ otp:otp
 })
 });
 
-const t=await res.text();
+const txt = await res.text();
 
-if(t.includes("INVALID")){
+if(txt.includes("INVALID")){
 alert("Invalid OTP");
 return;
 }
 
-document.getElementById("loggedEmail").value=email;
+document.getElementById("loggedEmail").value = email;
 showPage("complaintPage");
 }
 
 async function fetchDetails(){
 if(!users.length){
-users=await (await fetch(OLD_API)).json();
+users = await (await fetch(OTP_API)).json();
 }
 
-const email=document.getElementById("loggedEmail").value.toLowerCase();
-const pin=document.getElementById("pin").value.trim();
+const email = document.getElementById("loggedEmail").value.toLowerCase();
+const pin = document.getElementById("pin").value.trim();
 
-const u=users.find(x=>
-String(x.email).toLowerCase()===email &&
-String(x.pin)===pin
+const user = users.find(u =>
+String(u.email).toLowerCase() === email &&
+String(u.pin) === pin
 );
 
-if(!u){
+if(!user){
 alert("Invalid PIN");
 return;
 }
 
-document.getElementById("name").value=u.name;
-document.getElementById("account").value=u.account_no;
-document.getElementById("ifsc").value=u.ifsc;
+document.getElementById("name").value = user.name;
+document.getElementById("account").value = user.account_no;
+document.getElementById("ifsc").value = user.ifsc;
 }
 
 async function submitComplaint(){
-const payload={
+const payload = {
 action:"submitComplaint",
 name:document.getElementById("name").value.trim(),
 account:document.getElementById("account").value.trim(),
 ifsc:document.getElementById("ifsc").value.trim(),
+phone:document.getElementById("phone").value.trim(),
 email:document.getElementById("loggedEmail").value.trim(),
 subject:document.getElementById("subject").value.trim(),
 subsubject:document.getElementById("subsubject").value.trim(),
 message:document.getElementById("message").value.trim()
 };
 
-const res=await fetch(NEW_API,{
+const res = await fetch(COMPLAINT_API,{
 method:"POST",
 body:JSON.stringify(payload)
 });
 
-const data=await res.json();
+const d = await res.json();
 
-if(!data.success){
-alert(data.message);
+if(!d.success){
+alert(d.message);
 return;
 }
 
-document.getElementById("ainBox").textContent=data.ain;
-showPage("successPage");
+alert("Complaint Submitted. AIN: " + d.ain);
+location.reload();
 }
 
 async function checkStatus(){
-const ain=document.getElementById("statusAin").value.trim();
+const ain = document.getElementById("statusAin").value.trim();
 
-const res=await fetch(NEW_API,{
+const res = await fetch(COMPLAINT_API,{
 method:"POST",
 body:JSON.stringify({
 action:"checkStatus",
@@ -288,17 +272,19 @@ ain:ain
 })
 });
 
-const d=await res.json();
+const d = await res.json();
 
 if(!d.success){
-document.getElementById("statusResult").innerHTML="<p>Complaint not found</p>";
+document.getElementById("statusResult").innerHTML = "<p>Complaint not found</p>";
 return;
 }
 
-document.getElementById("statusResult").innerHTML=`
-<div class="status-card">
+document.getElementById("statusResult").innerHTML = `
+<div class="detail-box">
 <p><b>Status:</b> ${d.status}</p>
 <p><b>AIN:</b> ${d.ain}</p>
+<p><b>Name:</b> ${d.name}</p>
+<p><b>Phone:</b> ${d.phone}</p>
 <p><b>Subject:</b> ${d.subject}</p>
 <p><b>Sub Subject:</b> ${d.subsubject}</p>
 <p><b>Message:</b> ${d.message}</p>
@@ -307,7 +293,96 @@ document.getElementById("statusResult").innerHTML=`
 `;
 }
 
-function resetPortal(){
+function officialLogin(){
+const ifsc = document.getElementById("offIfsc").value.trim();
+const pass = document.getElementById("offPass").value.trim();
+
+if(ifsc === "TBIJ000001" && pass === "Simrin0209"){
+showPage("officialDashboard");
+loadComplaints("all");
+}else{
+alert("Invalid credentials");
+}
+}
+
+async function loadComplaints(filter){
+const res = await fetch(COMPLAINT_API);
+complaintCache = await res.json();
+
+if(!Array.isArray(complaintCache)){
+alert("Backend list API required");
+return;
+}
+
+filteredComplaints = complaintCache;
+
+if(filter !== "all"){
+filteredComplaints = complaintCache.filter(c =>
+String(c.status).includes(filter)
+);
+}
+
+document.getElementById("complaintList").innerHTML =
+filteredComplaints.map((c,i)=>`
+<div class="list-item" onclick="viewComplaint(${i})">
+<b>${c.ain}</b> - ${c.name} - ${c.status}
+</div>
+`).join("");
+}
+
+function viewComplaint(i){
+const c = filteredComplaints[i];
+
+document.getElementById("detailBox").innerHTML = `
+<div class="detail-box">
+<h3>Complaint Details</h3>
+
+<p><b>AIN:</b> ${c.ain}</p>
+<p><b>Name:</b> ${c.name}</p>
+<p><b>Account No:</b> ${c.account}</p>
+<p><b>IFSC:</b> ${c.ifsc}</p>
+<p><b>Phone:</b> ${c.phone}</p>
+<p><b>Email:</b> ${c.email}</p>
+<p><b>Subject:</b> ${c.subject}</p>
+<p><b>Sub Subject:</b> ${c.subsubject}</p>
+<p><b>Message:</b> ${c.message}</p>
+<p><b>Date/Time:</b> ${c.date}</p>
+<p><b>Status:</b> ${c.status}</p>
+
+<select id="newStatus">
+<option>Pending</option>
+<option>Accepted</option>
+<option>Rejected</option>
+<option>Solved</option>
+</select>
+
+<input id="remark" placeholder="Enter Remark">
+
+<button onclick="updateStatus('${c.ain}')">Update Status</button>
+</div>
+`;
+}
+
+async function updateStatus(ain){
+const status = document.getElementById("newStatus").value;
+const remark = document.getElementById("remark").value.trim();
+
+const res = await fetch(COMPLAINT_API,{
+method:"POST",
+body:JSON.stringify({
+action:"updateStatus",
+ain:ain,
+status:status,
+remark:remark
+})
+});
+
+const d = await res.json();
+alert(d.message);
+loadComplaints("all");
+}
+
+function logoutOfficial(){
 location.reload();
 }
 </script>
