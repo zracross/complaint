@@ -111,14 +111,13 @@ button{background:#1a73e8;color:#fff;border:none;font-weight:bold;cursor:pointer
 
 <button class="secondary" onclick="location.reload()">Logout</button>
 </div>
-
 </div>
 
 <script>
 const OTP_API="https://script.google.com/macros/s/AKfycbzTfkw41vJ7OUUlTyN7MLg-aZB8ULTyKmNtMcrvyqzraArFLbjXX79YHvYtSF9zOML2Ag/exec";
 const COMPLAINT_API="https://script.google.com/macros/s/AKfycbxDpV6rK6tG8CiHcUoLuyBnCugUumimX8iuxd1x3m7dGlCqD55vPcEGaSOLo4aFofTV/exec";
 
-let complaints=[], filtered=[];
+let complaints=[],filtered=[];
 
 const subSubjects={
 "Account Issues":["Account Access","PIN Problem","Balance Issue"],
@@ -130,24 +129,32 @@ const subSubjects={
 };
 
 function msg(text,type){
-messageBox.innerHTML=`<div class="msg ${type}">${text}</div>`;
-setTimeout(()=>messageBox.innerHTML="",4000);
+document.getElementById("messageBox").innerHTML=`<div class="msg ${type}">${text}</div>`;
+setTimeout(()=>document.getElementById("messageBox").innerHTML="",4000);
 }
 
 function showPage(id){
-["loginPage","complaintPage","successPage","statusPage","officialLogin","officialDashboard"].forEach(p=>document.getElementById(p).classList.add("hidden"));
+["loginPage","complaintPage","successPage","statusPage","officialLogin","officialDashboard"].forEach(p=>{
+document.getElementById(p).classList.add("hidden");
+});
 document.getElementById(id).classList.remove("hidden");
 }
 
 function loadSubSubjects(){
-const subject=document.getElementById("subject").value;
-subsubject.innerHTML='<option value="">Select Sub Subject</option>';
-(subSubjects[subject]||[]).forEach(s=>subsubject.innerHTML+=`<option>${s}</option>`);
+const selected=document.getElementById("subject").value;
+const sub=document.getElementById("subsubject");
+sub.innerHTML='<option value="">Select Sub Subject</option>';
+(subSubjects[selected]||[]).forEach(item=>{
+sub.innerHTML+=`<option>${item}</option>`;
+});
 }
 
 async function sendOTP(){
 const email=document.getElementById("email").value.trim();
-const res=await fetch(OTP_API,{method:"POST",body:JSON.stringify({action:"sendOTP",email})});
+const res=await fetch(OTP_API,{
+method:"POST",
+body:JSON.stringify({action:"sendOTP",email})
+});
 msg(await res.text(),"success");
 }
 
@@ -155,75 +162,98 @@ async function verifyOTP(){
 const email=document.getElementById("email").value.trim();
 const otp=document.getElementById("otp").value.trim();
 
-const res=await fetch(OTP_API,{method:"POST",body:JSON.stringify({action:"verifyOTP",email,otp})});
+const res=await fetch(OTP_API,{
+method:"POST",
+body:JSON.stringify({action:"verifyOTP",email,otp})
+});
+
 const txt=await res.text();
 
-if(txt.includes("INVALID")) return msg("Invalid OTP","error");
+if(txt.includes("INVALID")){
+msg("Invalid OTP","error");
+return;
+}
 
-loggedEmail.value=email;
+document.getElementById("loggedEmail").value=email;
 showPage("complaintPage");
 }
 
 async function fetchDetails(){
 try{
-const email=loggedEmail.value.trim().toLowerCase();
+const email=document.getElementById("loggedEmail").value.trim().toLowerCase();
 const pin=document.getElementById("pin").value.trim();
 
 const res=await fetch(OTP_API);
 const users=await res.json();
 
-const u=users.find(user=>
-String(user["EMAIL"]||"").trim().toLowerCase()===email &&
-String(user["PIN"]||"").trim()===pin
-);
+const u=users.find(user=>{
+const userEmail=String(user["EMAIL"]||user["Email"]||user.email||"").trim().toLowerCase();
+const userPin=String(user["PIN"]||user["Pin"]||user.pin||"").trim();
+return userEmail===email && userPin===pin;
+});
 
-if(!u) return msg("Invalid PIN or customer not found","error");
+if(!u){
+msg("Invalid PIN or customer not found","error");
+return;
+}
 
-name.value=u["NAME"]||"";
-account.value=u["A/C NO"]||"";
-ifsc.value=u["IFSC"]||"";
-phone.value=u["PHONE NO"]||"";
+document.getElementById("name").value=u["NAME"]||u["Name"]||u.name||"";
+document.getElementById("account").value=u["A/C NO"]||u["ACCOUNT"]||u.account||"";
+document.getElementById("ifsc").value=u["IFSC"]||u.ifsc||"";
+document.getElementById("phone").value=u["PHONE NO"]||u.phone||"";
 
-msg("Customer details fetched","success");
+msg("Customer details fetched successfully","success");
 
 }catch(err){
-msg("Fetch failed","error");
+msg("Fetch failed: "+err.message,"error");
 }
 }
 
 async function submitComplaint(){
 const payload={
 action:"submitComplaint",
-name:name.value.trim(),
-account:account.value.trim(),
-ifsc:ifsc.value.trim(),
-phone:phone.value.trim(),
-email:loggedEmail.value.trim(),
-subject:subject.value.trim(),
-subsubject:subsubject.value.trim(),
-message:message.value.trim()
+name:document.getElementById("name").value.trim(),
+account:document.getElementById("account").value.trim(),
+ifsc:document.getElementById("ifsc").value.trim(),
+phone:document.getElementById("phone").value.trim(),
+email:document.getElementById("loggedEmail").value.trim(),
+subject:document.getElementById("subject").value.trim(),
+subsubject:document.getElementById("subsubject").value.trim(),
+message:document.getElementById("message").value.trim()
 };
 
-const res=await fetch(COMPLAINT_API,{method:"POST",body:JSON.stringify(payload)});
+const res=await fetch(COMPLAINT_API,{
+method:"POST",
+body:JSON.stringify(payload)
+});
+
 const d=await res.json();
 
-if(!d.success) return msg(d.message,"error");
+if(!d.success){
+msg(d.message,"error");
+return;
+}
 
-ainDisplay.textContent=d.ain;
+document.getElementById("ainDisplay").textContent=d.ain;
 showPage("successPage");
 }
 
 async function checkStatus(){
-const ain=statusAin.value.trim();
-const res=await fetch(COMPLAINT_API,{method:"POST",body:JSON.stringify({action:"checkStatus",ain})});
+const ain=document.getElementById("statusAin").value.trim();
+
+const res=await fetch(COMPLAINT_API,{
+method:"POST",
+body:JSON.stringify({action:"checkStatus",ain})
+});
+
 const d=await res.json();
 
 if(!d.success){
-statusResult.innerHTML="<div class='card'>Complaint not found</div>";
+document.getElementById("statusResult").innerHTML="<div class='card'>Complaint not found</div>";
 return;
 }
 
-statusResult.innerHTML=`
+document.getElementById("statusResult").innerHTML=`
 <div class="card">
 <p><b>Status:</b> ${d.status}</p>
 <p><b>AIN:</b> ${d.ain}</p>
@@ -237,7 +267,8 @@ statusResult.innerHTML=`
 }
 
 function officialLogin(){
-if(offIfsc.value==="TBIJ000001" && offPass.value==="Simrin0209"){
+if(document.getElementById("offIfsc").value==="TBIJ000001" &&
+document.getElementById("offPass").value==="Simrin0209"){
 showPage("officialDashboard");
 loadComplaints("all");
 }else{
@@ -249,9 +280,9 @@ async function loadComplaints(filter){
 const res=await fetch(COMPLAINT_API);
 complaints=await res.json();
 
-filtered=filter==="all" ? complaints : complaints.filter(c=>String(c.status).includes(filter));
+filtered=filter==="all"?complaints:complaints.filter(c=>String(c.status).includes(filter));
 
-complaintList.innerHTML=filtered.map((c,i)=>`
+document.getElementById("complaintList").innerHTML=filtered.map((c,i)=>`
 <div class="card" onclick="viewComplaint(${i})">
 <b>${c.ain}</b><br>${c.name}<br>${c.status}
 </div>`).join("");
@@ -260,7 +291,7 @@ complaintList.innerHTML=filtered.map((c,i)=>`
 function viewComplaint(i){
 const c=filtered[i];
 
-detailBox.innerHTML=`
+document.getElementById("detailBox").innerHTML=`
 <div class="card">
 <h3>Complaint Details</h3>
 <p><b>AIN:</b> ${c.ain}</p>
@@ -293,8 +324,8 @@ method:"POST",
 body:JSON.stringify({
 action:"updateStatus",
 ain,
-status:newStatus.value,
-remark:remark.value.trim()
+status:document.getElementById("newStatus").value,
+remark:document.getElementById("remark").value.trim()
 })
 });
 
